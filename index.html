@@ -1,0 +1,1218 @@
+<!doctype html>
+<!--
+  PULULUKWA RESORT: página com o filme controlado pelo scroll.
+  O estilo segue a referência "VISIT INDONESIA": Open Sans, preto, branco e vermelho,
+  navegação com régua e marcador, contador vertical, três colunas e a régua de progresso.
+  As medidas do ecrã inicial usam a grelha da referência (1080 x 760): posições em %,
+  tamanhos em --u. As secções seguintes usam --w (largura / 1080).
+-->
+<html lang="pt" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <script>document.documentElement.className = "js is-loading";</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="Pululukwa Resort, no Lubango, Angola: 60 bungalows em três aldeias, mais de 200 hectares de lagos e jardins.">
+  <title>Pululukwa Resort — Lubango</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- A folha da fonte carrega sem bloquear: com rede lenta a página abre logo e a Open Sans entra quando chegar -->
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+  <style>
+    :root {
+      --black: #000;
+      --white: #fff;
+      --red: #e31e24;
+      --font: "Open Sans", "Segoe UI", Arial, sans-serif;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+      --w: calc(min(100vw, 1600px) / 1080);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html {
+      background: var(--black);
+      color: var(--white);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+      scroll-behavior: auto;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--black);
+      color: var(--white);
+      overflow-x: clip;
+    }
+
+    .is-loading body { overflow: hidden; }
+
+    /* Sem JavaScript (ou numa pré-visualização estática) não há loader nem filme:
+       mostra-se o primeiro ecrã parado, com a imagem do início do vídeo. */
+    .no-js .loader { display: none; }
+    .no-js .sequence { height: 100vh; height: 100svh; }
+    .no-js .stage { background: #000 url("img/poster.webp") center / cover no-repeat; }
+    .no-js .chapter:first-child { visibility: visible; }
+    .no-js .chapter:first-child .line > span,
+    .no-js .chapter:first-child .chapter__cols p > span { transform: none; }
+
+    a { color: inherit; text-decoration: none; }
+    a, button { -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
+    p, h1, h2, h3, ul, ol, figure { margin: 0; padding: 0; }
+    ul, ol { list-style: none; }
+    img { display: block; max-width: 100%; }
+
+    /* ---------- Loader ---------- */
+
+    .loader {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      gap: 26px;
+      background: var(--black);
+      transition: opacity 700ms ease, visibility 700ms;
+    }
+
+    .loader.is-done { opacity: 0; visibility: hidden; }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: .7em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .brand::before {
+      content: "";
+      width: .83em;
+      height: .83em;
+      border-radius: 50%;
+      background: var(--red);
+      flex: none;
+    }
+
+    .loader .brand { font-size: 18px; }
+
+    .loader__track {
+      position: relative;
+      width: 240px;
+      height: 2px;
+      background: var(--white);
+    }
+
+    .loader__fill {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 100%;
+      height: 3px;
+      background: var(--red);
+      transform: translateY(-50%) scaleX(0);
+      transform-origin: left;
+      transition: transform 300ms ease;
+    }
+
+    .loader__count { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+    /* ---------- Sequência (ecrã inicial) ---------- */
+
+    .sequence {
+      position: relative;
+      height: 600vh;
+      background: var(--black);
+    }
+
+    .stage {
+      --u: min(calc(100vw / 1080), calc(100vh / 760));
+      --p: .2;
+      position: sticky;
+      top: 0;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--black);
+      isolation: isolate;
+    }
+
+    @supports (height: 100svh) {
+      .stage { --u: min(calc(100vw / 1080), calc(100svh / 760)); height: 100svh; }
+    }
+
+    #film {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .stage__shade {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(0, 0, 0, .42) 0%, rgba(0, 0, 0, 0) 20%),
+        linear-gradient(0deg, #000 0%, #000 4.5%, rgba(0, 0, 0, .78) 12%, rgba(0, 0, 0, .3) 27%, rgba(0, 0, 0, 0) 42%),
+        linear-gradient(90deg, rgba(0, 0, 0, .34) 0%, rgba(0, 0, 0, 0) 60%),
+        rgba(0, 0, 0, .2);
+    }
+
+    /* Navegação: texto centrado a 47/760, régua a 72/760 */
+    .nav {
+      position: absolute;
+      z-index: 6;
+      left: 8.98%;
+      right: 10.19%;
+      top: 0;
+      height: 12.37%;
+    }
+
+    .nav__rule {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 76.6%;
+      height: max(1px, calc(var(--u) * 2));
+      background: var(--white);
+      transform: translateY(-50%);
+    }
+
+    .nav__brand {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      font-size: max(13px, calc(var(--u) * 18));
+    }
+
+    .nav__brand .brand { gap: calc(var(--u) * 12.5); }
+    .nav__brand .brand::before { width: calc(var(--u) * 15); height: calc(var(--u) * 15); }
+
+    /* A ligação do meio fica centrada no marcador vermelho (537/1080) */
+    .nav__links {
+      position: absolute;
+      left: 50.46%;
+      top: 0;
+      height: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: calc(var(--u) * 59);
+      transform: translateX(-50%);
+    }
+
+    .nav__links a:first-child { justify-self: end; }
+    .nav__links a:last-child { justify-self: start; }
+
+    .nav__links a {
+      position: relative;
+      display: flex;
+      align-items: center;
+      height: 100%;
+      font-size: max(12px, calc(var(--u) * 14));
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .nav__links a[aria-current]::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 76.6%;
+      width: calc(var(--u) * 205);
+      height: max(2px, calc(var(--u) * 3));
+      background: var(--red);
+      transform: translate(-50%, -50%);
+    }
+
+    /* Capítulos */
+    .chapters {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .chapter {
+      position: absolute;
+      inset: 0;
+      visibility: hidden;
+      transition: visibility 0s linear 720ms;
+    }
+
+    .chapter.is-active { visibility: visible; transition-delay: 0s; }
+
+    .chapter__title {
+      position: absolute;
+      left: 11.39%;
+      top: 32.9%;
+      font-size: calc(var(--u) * 110);
+      font-weight: 800;
+      line-height: .955;
+      letter-spacing: -.012em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* Folga só em cima, para o acento de TRÊS não ficar cortado */
+    .line {
+      display: block;
+      overflow: hidden;
+      padding: .16em .04em 0 0;
+      margin: -.16em -.04em 0 0;
+    }
+
+    .line > span,
+    .chapter__cols p > span {
+      display: block;
+      transform: translateY(115%);
+      transition: transform 480ms var(--ease);
+    }
+
+    .chapter.is-past .line > span,
+    .chapter.is-past .chapter__cols p > span { transform: translateY(-115%); }
+
+    .chapter.is-active .line > span,
+    .chapter.is-active .chapter__cols p > span {
+      transform: translateY(0);
+      transition-duration: 760ms;
+    }
+
+    .chapter.is-active .line:nth-child(2) > span { transition-delay: 70ms; }
+    .chapter.is-active .chapter__cols p:nth-child(1) > span { transition-delay: 140ms; }
+    .chapter.is-active .chapter__cols p:nth-child(2) > span { transition-delay: 200ms; }
+    .chapter.is-active .chapter__cols p:nth-child(3) > span { transition-delay: 260ms; }
+
+    .chapter__cols p {
+      position: absolute;
+      top: 77.5%;
+      width: calc(var(--u) * 258);
+      min-width: 150px;
+      overflow: hidden;
+      font-size: max(11px, calc(var(--u) * 12));
+      font-weight: 400;
+      line-height: 1.25;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
+    }
+
+    .chapter__cols p:nth-child(1) { left: 6.57%; }
+    .chapter__cols p:nth-child(2) { left: 38.89%; }
+    .chapter__cols p:nth-child(3) { left: 69.35%; }
+
+    /* Contador vertical: o número activo fica a 372/760 */
+    .counter {
+      --i: 0;
+      position: absolute;
+      z-index: 5;
+      right: 10.28%;
+      top: 48.95%;
+      pointer-events: none;
+    }
+
+    .counter__list {
+      transform: translateY(calc(var(--u) * (-29 * var(--i) - 21.5)));
+      transition: transform 620ms var(--ease);
+    }
+
+    .counter__list li {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      height: calc(var(--u) * 29);
+      font-size: max(11px, calc(var(--u) * 18));
+      font-weight: 400;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      transition: height 620ms var(--ease), font-size 620ms var(--ease), opacity 400ms ease;
+    }
+
+    .counter__list li.is-active {
+      height: calc(var(--u) * 43);
+      font-size: calc(var(--u) * 38);
+      font-weight: 700;
+    }
+
+    .counter__list li.is-far { opacity: 0; }
+
+    .counter__rule {
+      position: absolute;
+      z-index: 5;
+      left: 91.2%;
+      right: 0;
+      top: calc(48.95% - var(--u) * 2);
+      height: max(1px, calc(var(--u) * 2));
+      background: var(--white);
+    }
+
+    .swipe {
+      position: absolute;
+      z-index: 6;
+      left: 6.67%;
+      top: 90.79%;
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      font-size: max(13px, calc(var(--u) * 18));
+      font-weight: 700;
+      text-transform: uppercase;
+      transform: translateY(-50%);
+    }
+
+    .progress {
+      position: absolute;
+      z-index: 5;
+      left: 11.57%;
+      right: 12.04%;
+      top: 98.03%;
+      height: max(1px, calc(var(--u) * 2));
+      background: var(--white);
+    }
+
+    .progress__fill {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 100%;
+      height: max(2px, calc(var(--u) * 3));
+      background: var(--red);
+      transform: translateY(-50%) scaleX(var(--p));
+      transform-origin: left center;
+      will-change: transform;
+    }
+
+    /* ---------- Recomendações ---------- */
+
+    .picks {
+      position: relative;
+      z-index: 10;
+      padding: calc(var(--w) * 45.5) 0 calc(var(--w) * 126);
+      background: var(--black);
+    }
+
+    .wrap {
+      position: relative;
+      width: calc(var(--w) * 1080);
+      margin: 0 auto;
+    }
+
+    .picks__kicker {
+      font-size: calc(var(--w) * 14);
+      line-height: calc(var(--w) * 19);
+      text-align: center;
+    }
+
+    .picks__title {
+      font-size: calc(var(--w) * 22);
+      font-weight: 700;
+      line-height: calc(var(--w) * 28);
+      text-align: center;
+    }
+
+    .picks__grid {
+      display: grid;
+      grid-template-columns: repeat(4, calc(var(--w) * 219));
+      column-gap: calc(var(--w) * 14.67);
+      margin-top: calc(var(--w) * 50);
+      padding-left: calc(var(--w) * 85);
+    }
+
+    .pick img {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 219 / 296;
+      object-fit: cover;
+      background: #111;
+    }
+
+    .pick figcaption { position: relative; text-align: center; }
+
+    .pick__place {
+      display: block;
+      margin-top: calc(var(--w) * -29);
+      font-size: calc(var(--w) * 24);
+      font-weight: 700;
+      line-height: calc(var(--w) * 30);
+      text-shadow: 0 1px 6px rgba(0, 0, 0, .5);
+    }
+
+    .pick__name {
+      display: block;
+      margin-top: calc(var(--w) * 3);
+      font-size: calc(var(--w) * 14);
+      line-height: calc(var(--w) * 18);
+    }
+
+    .rules {
+      position: relative;
+      height: max(1px, calc(var(--w) * 2));
+      margin-top: calc(var(--w) * 69);
+    }
+
+    .rules::before,
+    .rules::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      height: 100%;
+      background: var(--white);
+    }
+
+    .rules::before { left: calc(var(--w) * 89); width: calc(var(--w) * 323); }
+    .rules::after { left: calc(var(--w) * 673); width: calc(var(--w) * 339); }
+
+    /* ---------- Descanso / reservas ---------- */
+
+    .rest {
+      position: relative;
+      z-index: 10;
+      height: calc(var(--w) * 502);
+      overflow: hidden;
+      background: var(--black);
+    }
+
+    .rest__bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .rest::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background:
+        linear-gradient(90deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, 0) 55%),
+        rgba(0, 0, 0, .5);
+    }
+
+    .rest .wrap { z-index: 2; height: 100%; }
+
+    .rest__title {
+      position: absolute;
+      left: calc(var(--w) * 86);
+      top: calc(var(--w) * 16);
+      font-size: calc(var(--w) * 52);
+      font-weight: 800;
+      line-height: calc(var(--w) * 46);
+      letter-spacing: -.012em;
+      text-transform: uppercase;
+    }
+
+    .play {
+      display: inline-grid;
+      place-items: center;
+      width: calc(var(--w) * 30);
+      height: calc(var(--w) * 30);
+      border: max(1.5px, calc(var(--w) * 2.5)) solid var(--white);
+      border-radius: 50%;
+      flex: none;
+    }
+
+    .play::before {
+      content: "";
+      margin-left: 12%;
+      border-style: solid;
+      border-width: calc(var(--w) * 6) 0 calc(var(--w) * 6) calc(var(--w) * 9.5);
+      border-color: transparent transparent transparent var(--white);
+    }
+
+    .rest__cta {
+      position: absolute;
+      left: calc(var(--w) * 81);
+      top: calc(var(--w) * 211);
+      display: flex;
+      align-items: center;
+      gap: calc(var(--w) * 14);
+      min-height: 44px;
+      font-size: calc(var(--w) * 16);
+      font-weight: 600;
+    }
+
+    .rest__cta:hover span:last-child { text-decoration: underline; text-underline-offset: 4px; }
+
+    .rest__text {
+      position: absolute;
+      left: calc(var(--w) * 86);
+      top: calc(var(--w) * 270);
+      width: calc(var(--w) * 345);
+      font-size: calc(var(--w) * 14);
+      font-weight: 600;
+      line-height: calc(var(--w) * 18);
+    }
+
+    .rest__text a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+    .thumb {
+      position: absolute;
+      top: calc(var(--w) * 294);
+      width: calc(var(--w) * 272);
+      height: calc(var(--w) * 144);
+      overflow: hidden;
+    }
+
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .thumb--film { left: calc(var(--w) * 450); }
+    .thumb--room { left: calc(var(--w) * 755); }
+
+    .thumb--film .play {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      transition: transform 300ms var(--ease);
+    }
+
+    .thumb--film:hover .play { transform: translate(-50%, -50%) scale(1.12); }
+
+    .rest__link {
+      position: absolute;
+      right: calc(var(--w) * 47);
+      top: calc(var(--w) * 444);
+      display: flex;
+      align-items: center;
+      min-height: 36px;
+      font-size: calc(var(--w) * 14);
+      font-weight: 600;
+    }
+
+    .rest__link:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* ---------- Telemóvel ---------- */
+
+    @media (max-width: 780px) {
+      :root { --w: calc(100vw / 390); }
+
+      .sequence { height: 540vh; }
+
+      .stage { --u: min(calc(100vw / 390), calc(100vh / 700)); }
+      @supports (height: 100svh) {
+        .stage { --u: min(calc(100vw / 390), calc(100svh / 700)); }
+      }
+
+      .stage__shade {
+        background:
+          linear-gradient(180deg, rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, 0) 16%),
+          linear-gradient(0deg, #000 0%, #000 36%, rgba(0, 0, 0, .7) 44%, rgba(0, 0, 0, 0) 58%),
+          rgba(0, 0, 0, .16);
+      }
+
+      .nav { left: calc(var(--u) * 20); right: calc(var(--u) * 20); height: calc(var(--u) * 70); }
+      .nav__rule { top: 80%; }
+      .nav__brand { font-size: calc(var(--u) * 14); }
+      .nav__brand .brand { gap: calc(var(--u) * 8); }
+      .nav__brand .brand::before { width: calc(var(--u) * 11); height: calc(var(--u) * 11); }
+      .nav__links { left: auto; right: 0; gap: calc(var(--u) * 16); transform: none; }
+      .nav__links a { font-size: calc(var(--u) * 12); }
+      .nav__links a[aria-current]::after { top: 80%; width: calc(var(--u) * 64); }
+
+      .chapter {
+        top: auto;
+        left: calc(var(--u) * 20);
+        right: calc(var(--u) * 20);
+        bottom: calc(var(--u) * 96);
+        display: flex;
+        flex-direction: column;
+        gap: calc(var(--u) * 22);
+      }
+
+      .chapter__title {
+        position: static;
+        font-size: calc(var(--u) * 50);
+      }
+
+      .chapter__cols { display: grid; gap: calc(var(--u) * 9); }
+
+      .chapter__cols p {
+        position: static;
+        width: auto;
+        min-width: 0;
+        max-width: 22rem;
+        font-size: calc(var(--u) * 12.5);
+        line-height: 1.3;
+      }
+
+      .counter { right: calc(var(--u) * 34); top: 31%; }
+      .counter__list { transform: translateY(calc(var(--u) * (-24 * var(--i) - 17))); }
+      .counter__list li { height: calc(var(--u) * 24); font-size: calc(var(--u) * 14); }
+      .counter__list li.is-active { height: calc(var(--u) * 34); font-size: calc(var(--u) * 30); }
+      .counter__rule { left: auto; width: calc(var(--u) * 22); top: calc(31% - var(--u) * 1); }
+
+      .swipe {
+        top: auto;
+        bottom: calc(var(--u) * 38);
+        left: calc(var(--u) * 20);
+        font-size: calc(var(--u) * 15);
+        transform: none;
+      }
+
+      .progress { top: auto; bottom: calc(var(--u) * 22); left: calc(var(--u) * 20); right: calc(var(--u) * 20); }
+
+      .picks { padding: calc(var(--w) * 56) calc(var(--w) * 20) calc(var(--w) * 64); }
+      .wrap { width: auto; }
+      .picks__kicker { font-size: calc(var(--w) * 13); line-height: 1.4; }
+      .picks__title { font-size: calc(var(--w) * 21); line-height: 1.3; }
+
+      .picks__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: calc(var(--w) * 26) calc(var(--w) * 12);
+        margin-top: calc(var(--w) * 32);
+        padding-left: 0;
+      }
+
+      .pick__place { margin-top: calc(var(--w) * -26); font-size: calc(var(--w) * 22); line-height: calc(var(--w) * 28); }
+      .pick__name { font-size: calc(var(--w) * 13); line-height: 1.35; }
+
+      .rules { margin-top: calc(var(--w) * 48); }
+      .rules::before { left: 0; width: 38%; }
+      .rules::after { left: 62%; width: 38%; }
+
+      .rest { height: auto; }
+      .rest .wrap { padding: calc(var(--w) * 44) calc(var(--w) * 20) calc(var(--w) * 26); }
+      .rest__title,
+      .rest__cta,
+      .rest__text,
+      .thumb,
+      .rest__link { position: relative; left: auto; right: auto; top: auto; }
+
+      .rest__title { font-size: calc(var(--w) * 44); line-height: .92; }
+      .rest__cta { margin-top: calc(var(--w) * 26); gap: calc(var(--w) * 12); font-size: calc(var(--w) * 16); }
+      .play { width: calc(var(--w) * 30); height: calc(var(--w) * 30); }
+      .rest__text { width: auto; margin-top: calc(var(--w) * 14); font-size: calc(var(--w) * 14); line-height: 1.35; }
+
+      .rest__thumbs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: calc(var(--w) * 12);
+        margin-top: calc(var(--w) * 26);
+      }
+
+      .thumb { width: auto; height: auto; aspect-ratio: 272 / 144; }
+      .rest__link { justify-content: flex-end; margin-top: calc(var(--w) * 18); font-size: calc(var(--w) * 13); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        transition-delay: 0s !important;
+      }
+      .sequence { height: 100vh; height: 100svh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="loader" id="loader" role="status" aria-label="A carregar o filme">
+    <span class="brand" aria-hidden="true">Pululukwa</span>
+    <div class="loader__track" aria-hidden="true"><span class="loader__fill" id="loader-fill"></span></div>
+    <span class="loader__count" id="loader-count" aria-hidden="true">000%</span>
+  </div>
+
+  <main>
+    <section class="sequence" id="topo" aria-label="Filme da chegada ao Pululukwa, controlado pelo scroll">
+      <div class="stage" id="stage">
+        <canvas id="film" role="img" aria-label="O edifício de telhado de colmo, da tarde até à noite, enquanto chegam os hóspedes"></canvas>
+        <div class="stage__shade" aria-hidden="true"></div>
+
+        <header class="nav">
+          <a class="nav__brand" href="#topo" aria-label="Pululukwa, voltar ao início"><span class="brand">Pululukwa</span></a>
+          <nav class="nav__links" aria-label="Secções">
+            <a href="#sugestoes">sugestões</a>
+            <a href="#topo" aria-current="true">o lodge</a>
+            <a href="#reservas">reservas</a>
+          </nav>
+          <span class="nav__rule" aria-hidden="true"></span>
+        </header>
+
+        <div class="chapters">
+          <article class="chapter" data-center="0.02">
+            <h1 class="chapter__title"><span class="line"><span>Visite o</span></span><span class="line"><span>Pululukwa</span></span></h1>
+            <div class="chapter__cols">
+              <p><span>O Pululukwa Resort fica no bairro da Mapunda, no Lubango, capital da província da Huíla, em Angola.</span></p>
+              <p><span>O nome vem do nhaneca-humbi, a língua da região, e quer dizer descansar o corpo.</span></p>
+              <p><span>São mais de 200 hectares de lagos e jardins, para percorrer a pé ou de bicicleta.</span></p>
+            </div>
+          </article>
+
+          <article class="chapter" data-center="0.17">
+            <h2 class="chapter__title"><span class="line"><span>Chegue</span></span><span class="line"><span>devagar</span></span></h2>
+            <div class="chapter__cols">
+              <p><span>Os caminhos juntam calçada portuguesa, passadiços de madeira e trilhos de terra vermelha.</span></p>
+              <p><span>Pelos jardins passeiam zebras, órix, springboks, impalas e avestruzes.</span></p>
+              <p><span>Há ainda jacarés, coelhos e muitas espécies de aves.</span></p>
+            </div>
+          </article>
+
+          <article class="chapter" data-center="0.42">
+            <h2 class="chapter__title"><span class="line"><span>Fim de</span></span><span class="line"><span>tarde</span></span></h2>
+            <div class="chapter__cols">
+              <p><span>O Restaurante dos Lagos está aberto ao público e tem lugar para 120 pessoas.</span></p>
+              <p><span>O pequeno-almoço é servido numa sala reservada aos hóspedes.</span></p>
+              <p><span>O resort tem spa e recebe festas de família, como casamentos e aniversários.</span></p>
+            </div>
+          </article>
+
+          <article class="chapter" data-center="0.66">
+            <h2 class="chapter__title"><span class="line"><span>Três</span></span><span class="line"><span>aldeias</span></span></h2>
+            <div class="chapter__cols">
+              <p><span>Aldeia Muholo: o nome vem de uma árvore da região.</span></p>
+              <p><span>Aldeia Zulu: lembra o povo zulu, o maior da África do Sul.</span></p>
+              <p><span>Aldeia Madeirense: evoca a influência portuguesa.</span></p>
+            </div>
+          </article>
+
+          <article class="chapter" data-center="0.9">
+            <h2 class="chapter__title"><span class="line"><span>60</span></span><span class="line"><span>bungalows</span></span></h2>
+            <div class="chapter__cols">
+              <p><span>São 60 bungalows, com capacidade para 128 hóspedes.</span></p>
+              <p><span>Há quartos individuais, duplos, duplos VIP, twin e familiares.</span></p>
+              <p><span>Todos têm ar condicionado, TV por cabo, cofre, minibar e telefone.</span></p>
+            </div>
+          </article>
+        </div>
+
+        <div class="counter" id="counter" aria-hidden="true">
+          <ol class="counter__list">
+            <li class="is-active">01</li><li>02</li><li>03</li><li class="is-far">04</li><li class="is-far">05</li>
+          </ol>
+        </div>
+        <span class="counter__rule" aria-hidden="true"></span>
+
+        <a class="swipe" href="#sugestoes">Deslize &gt;&gt;</a>
+        <div class="progress" aria-hidden="true"><span class="progress__fill"></span></div>
+      </div>
+    </section>
+
+    <section class="picks" id="sugestoes" aria-labelledby="picks-title">
+      <div class="wrap">
+        <p class="picks__kicker">indeciso? veja estas sugestões</p>
+        <h2 class="picks__title" id="picks-title">recomendações no resort</h2>
+
+        <div class="picks__grid">
+          <figure class="pick">
+            <img src="img/sugestao-deck.webp" width="540" height="729" loading="lazy" alt="Deck de madeira com mesas, virado para os lagos e passadiços, ao fim da tarde">
+            <figcaption><span class="pick__place">1.º lugar</span><span class="pick__name">Deck sobre os lagos</span></figcaption>
+          </figure>
+          <figure class="pick">
+            <img src="img/sugestao-passadicos.webp" width="540" height="729" loading="lazy" alt="Passadiço de madeira que leva a um edifício com telhado de colmo">
+            <figcaption><span class="pick__place">2.º lugar</span><span class="pick__name">Passadiços de madeira</span></figcaption>
+          </figure>
+          <figure class="pick">
+            <img src="img/sugestao-quarto.webp" width="389" height="525" loading="lazy" alt="Cama de madeira com dossel de rede mosquiteira num bungalow">
+            <figcaption><span class="pick__place">3.º lugar</span><span class="pick__name">Quarto do bungalow</span></figcaption>
+          </figure>
+          <figure class="pick">
+            <img src="img/sugestao-lodge-noite.webp" width="533" height="720" loading="lazy" alt="Edifício de telhado de colmo iluminado debaixo de um céu estrelado">
+            <figcaption><span class="pick__place">4.º lugar</span><span class="pick__name">O lodge à noite</span></figcaption>
+          </figure>
+        </div>
+
+        <div class="rules" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <section class="rest" id="reservas" aria-labelledby="rest-title">
+      <img class="rest__bg" src="img/descanso-fundo.webp" width="720" height="335" loading="lazy" alt="">
+      <div class="wrap">
+        <h2 class="rest__title" id="rest-title">Viaje e<br>descanse<br>o corpo</h2>
+
+        <a class="rest__cta" href="mailto:reserva@pululukwa.co.ao"><span class="play" aria-hidden="true"></span><span>reserve o seu bungalow</span></a>
+
+        <p class="rest__text">O Pululukwa fica na Mapunda, no Lubango. Tem 60 bungalows, o Restaurante dos Lagos e mais de 200 hectares de jardins. Reservas pelo <a href="tel:+244932565017">932&nbsp;565&nbsp;017</a> ou por <a href="mailto:reserva@pululukwa.co.ao">reserva@pululukwa.co.ao</a>.</p>
+
+        <div class="rest__thumbs">
+          <a class="thumb thumb--film" href="#topo">
+            <img src="img/filme-chegada.webp" width="544" height="290" loading="lazy" alt="">
+            <span class="play" aria-hidden="true"></span>
+            <span class="sr-only">Ver outra vez o filme da chegada</span>
+          </a>
+          <figure class="thumb thumb--room">
+            <img src="img/quarto-aldeia.webp" width="515" height="275" loading="lazy" alt="Quarto com cama de casal e almofadas vermelhas debaixo do telhado de colmo">
+          </figure>
+        </div>
+
+        <a class="rest__link" href="https://www.facebook.com/pululukwaresort" target="_blank" rel="noopener">http://facebook.com/pululukwaresort</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const FRAME_COUNT = 120;
+      const FRAME_PAD = 4;
+      const LERP_FACTOR = 0.11;
+      const DWELL_WIDTH = 0.038;
+      const DWELL_PEAK = 2.6;
+      const LUT_SIZE = 2400;
+      const MOBILE_QUERY = "(max-width: 780px)";
+      const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
+      const MOBILE_IMAGE_BOX = 0.64;
+      const CRITICAL_WAIT_MS = 2500;
+
+      const sequence = document.getElementById("topo");
+      const stage = document.getElementById("stage");
+      const canvas = document.getElementById("film");
+      const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+      const loader = document.getElementById("loader");
+      const loaderFill = document.getElementById("loader-fill");
+      const loaderCount = document.getElementById("loader-count");
+      const counter = document.getElementById("counter");
+      const counterItems = Array.from(counter.querySelectorAll("li"));
+      const chapters = Array.from(document.querySelectorAll(".chapter"));
+      const DWELL_CENTERS = chapters.map((chapter) => Number(chapter.dataset.center));
+      const reducedMotion = window.matchMedia(REDUCED_QUERY).matches;
+      const mobileMedia = window.matchMedia(MOBILE_QUERY);
+      const frameStores = {
+        desktop: createFrameStore("frames/desktop"),
+        mobile: createFrameStore("frames/mobile")
+      };
+      let useMobileFrames = mobileMedia.matches;
+      let activeStore = useMobileFrames ? frameStores.mobile : frameStores.desktop;
+      let currentFrame = 0;
+      let lastDrawn = -1;
+      let activeChapter = -1;
+      let lastFill = "";
+      let pageVisible = true;
+      let rafId = 0;
+      let sequenceTop = 0;
+      let sequenceDistance = 1;
+
+      function createFrameStore(directory) {
+        return {
+          directory,
+          images: new Array(FRAME_COUNT),
+          loaded: new Uint8Array(FRAME_COUNT),
+          promises: new Array(FRAME_COUNT)
+        };
+      }
+
+      function frameUrl(index, store = activeStore) {
+        return `${store.directory}/frame-${String(index + 1).padStart(FRAME_PAD, "0")}.webp`;
+      }
+
+      function setLoaderProgress(ratio) {
+        const safeRatio = Math.max(0, Math.min(1, ratio));
+        loaderFill.style.transform = `translateY(-50%) scaleX(${safeRatio})`;
+        loaderCount.textContent = `${String(Math.round(safeRatio * 100)).padStart(3, "0")}%`;
+      }
+
+      function loadFrame(index, store = activeStore, retries = 1) {
+        if (store.loaded[index]) return Promise.resolve(store.images[index]);
+        if (store.promises[index]) return store.promises[index];
+
+        store.promises[index] = new Promise((resolve) => {
+          const attempt = (remaining) => {
+            const image = new Image();
+            store.images[index] = image;
+            image.decoding = "async";
+            image.onload = () => {
+              store.loaded[index] = 1;
+              resolve(image);
+            };
+            image.onerror = () => {
+              if (remaining > 0) {
+                window.setTimeout(() => attempt(remaining - 1), 140);
+              } else {
+                store.images[index] = null;
+                store.promises[index] = null;
+                resolve(null);
+              }
+            };
+            image.src = frameUrl(index, store);
+          };
+          attempt(retries);
+        });
+        return store.promises[index];
+      }
+
+      async function loadInBatches(indices, size = 8, store = activeStore) {
+        for (let start = 0; start < indices.length; start += size) {
+          const batch = indices.slice(start, start + size);
+          await Promise.all(batch.map((index) => loadFrame(index, store)));
+        }
+      }
+
+      function nearestLoaded(index, store = activeStore) {
+        if (store.loaded[index]) return index;
+        for (let distance = 1; distance < FRAME_COUNT; distance += 1) {
+          const before = index - distance;
+          const after = index + distance;
+          if (before >= 0 && store.loaded[before]) return before;
+          if (after < FRAME_COUNT && store.loaded[after]) return after;
+        }
+        return -1;
+      }
+
+      function resizeCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const width = Math.round(stage.clientWidth * dpr);
+        const height = Math.round(stage.clientHeight * dpr);
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+          lastDrawn = -1;
+        }
+      }
+
+      function updateSequenceMetrics() {
+        const rect = sequence.getBoundingClientRect();
+        sequenceTop = window.scrollY + rect.top;
+        sequenceDistance = Math.max(1, rect.height - window.innerHeight);
+      }
+
+      function drawFrame(index) {
+        const resolved = nearestLoaded(Math.max(0, Math.min(FRAME_COUNT - 1, index)));
+        if (resolved < 0 || resolved === lastDrawn) return;
+        const image = activeStore.images[resolved];
+        if (!image || !image.naturalWidth) return;
+
+        const width = canvas.width;
+        const height = canvas.height;
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, width, height);
+
+        let scale;
+        if (useMobileFrames) {
+          // No telemóvel o filme ocupa o topo; o texto assenta no preto em baixo.
+          scale = Math.max((height * MOBILE_IMAGE_BOX) / image.naturalHeight, width / image.naturalWidth);
+        } else {
+          scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+        }
+
+        const drawWidth = image.naturalWidth * scale;
+        const drawHeight = image.naturalHeight * scale;
+        const x = (width - drawWidth) / 2;
+        const y = useMobileFrames ? 0 : (height - drawHeight) / 2;
+
+        ctx.drawImage(image, x, y, drawWidth, drawHeight);
+        lastDrawn = resolved;
+      }
+
+      const rawAtEffective = new Float64Array(LUT_SIZE + 1);
+
+      function buildDwellLut() {
+        let total = 0;
+        const density = new Float64Array(LUT_SIZE + 1);
+        for (let i = 0; i <= LUT_SIZE; i += 1) {
+          const effective = i / LUT_SIZE;
+          let value = 1;
+          for (const center of DWELL_CENTERS) {
+            const delta = (effective - center) / DWELL_WIDTH;
+            value += DWELL_PEAK * Math.exp(-0.5 * delta * delta);
+          }
+          density[i] = value;
+          if (i > 0) total += (density[i - 1] + value) * 0.5;
+          rawAtEffective[i] = total;
+        }
+        for (let i = 0; i <= LUT_SIZE; i += 1) rawAtEffective[i] /= total;
+      }
+
+      function remapProgress(raw) {
+        let low = 0;
+        let high = LUT_SIZE;
+        while (low < high) {
+          const mid = (low + high) >> 1;
+          if (rawAtEffective[mid] < raw) low = mid + 1;
+          else high = mid;
+        }
+        const index = Math.max(1, low);
+        const leftRaw = rawAtEffective[index - 1];
+        const rightRaw = rawAtEffective[index];
+        const span = rightRaw - leftRaw || 1;
+        const mix = (raw - leftRaw) / span;
+        return Math.max(0, Math.min(1, (index - 1 + mix) / LUT_SIZE));
+      }
+
+      function rawScrollProgress() {
+        return Math.max(0, Math.min(1, (window.scrollY - sequenceTop) / sequenceDistance));
+      }
+
+      function setChapter(index) {
+        if (index === activeChapter) return;
+        activeChapter = index;
+        chapters.forEach((chapter, i) => {
+          chapter.classList.toggle("is-active", i === index);
+          chapter.classList.toggle("is-past", i < index);
+          chapter.setAttribute("aria-hidden", String(i !== index));
+        });
+        counter.style.setProperty("--i", String(index));
+        counterItems.forEach((item, i) => {
+          item.classList.toggle("is-active", i === index);
+          item.classList.toggle("is-far", Math.abs(i - index) > 2);
+        });
+      }
+
+      function nearestChapter(effective) {
+        let nearest = 0;
+        let best = Infinity;
+        DWELL_CENTERS.forEach((center, i) => {
+          const distance = Math.abs(effective - center);
+          if (distance < best) {
+            best = distance;
+            nearest = i;
+          }
+        });
+        return nearest;
+      }
+
+      function updateProgress(effective) {
+        // A régua começa com o primeiro capítulo marcado, como um slide 1 de 5.
+        const steps = chapters.length;
+        const fill = ((effective * (steps - 1) + 1) / steps).toFixed(4);
+        if (fill !== lastFill) {
+          lastFill = fill;
+          stage.style.setProperty("--p", fill);
+        }
+      }
+
+      function dismissLoader() {
+        setLoaderProgress(1);
+        loader.classList.add("is-done");
+        document.documentElement.classList.remove("is-loading");
+        window.setTimeout(() => loader.remove(), 800);
+      }
+
+      function showLoadError() {
+        loaderCount.textContent = "Não foi possível carregar o filme. Recarregue a página.";
+        loaderCount.style.color = "var(--red)";
+        loader.setAttribute("aria-label", "Não foi possível carregar o filme. Recarregue a página.");
+      }
+
+      function tick() {
+        if (!pageVisible || reducedMotion) return;
+        const raw = rawScrollProgress();
+        const effective = remapProgress(raw);
+        const targetFrame = Math.round(effective * (FRAME_COUNT - 1));
+        currentFrame += (targetFrame - currentFrame) * LERP_FACTOR;
+        drawFrame(Math.round(currentFrame));
+        setChapter(nearestChapter(effective));
+        updateProgress(effective);
+        rafId = requestAnimationFrame(tick);
+      }
+
+      async function init() {
+        buildDwellLut();
+        resizeCanvas();
+        updateSequenceMetrics();
+        setChapter(0);
+        setLoaderProgress(0.06);
+
+        if (reducedMotion) {
+          const poster = await loadFrame(0);
+          if (!poster) {
+            showLoadError();
+            return;
+          }
+          drawFrame(0);
+          dismissLoader();
+          return;
+        }
+
+        const critical = Array.from(new Set([
+          0,
+          ...DWELL_CENTERS.map((center) => Math.round(center * (FRAME_COUNT - 1))),
+          FRAME_COUNT - 1
+        ])).sort((a, b) => a - b);
+
+        const firstFrame = await loadFrame(0);
+        if (firstFrame) {
+          drawFrame(0);
+          setLoaderProgress(0.3);
+        }
+
+        if (nearestLoaded(0) < 0) {
+          showLoadError();
+          return;
+        }
+
+        // Com rede lenta não se fica preso no loader: o primeiro frame chega para abrir,
+        // e os outros frames-chave continuam a carregar por trás.
+        const criticalTail = critical.filter((index) => index !== 0);
+        let prepared = 0;
+        const criticalReady = Promise.all(criticalTail.map(async (index) => {
+          const image = await loadFrame(index);
+          prepared += 1;
+          setLoaderProgress(0.3 + 0.66 * (prepared / criticalTail.length));
+          return image;
+        }));
+        await Promise.race([criticalReady, new Promise((resolve) => window.setTimeout(resolve, CRITICAL_WAIT_MS))]);
+
+        dismissLoader();
+        tick();
+
+        const remaining = Array.from({ length: FRAME_COUNT }, (_, index) => index)
+          .filter((index) => !critical.includes(index));
+        loadInBatches(remaining);
+      }
+
+      async function swapFrameSet(event) {
+        useMobileFrames = event.matches;
+        activeStore = useMobileFrames ? frameStores.mobile : frameStores.desktop;
+        lastDrawn = -1;
+        resizeCanvas();
+        updateSequenceMetrics();
+
+        const frame = Math.max(0, Math.min(FRAME_COUNT - 1, Math.round(currentFrame)));
+        const image = await loadFrame(frame, activeStore);
+        if (!image) return;
+        drawFrame(frame);
+
+        const byDistance = Array.from({ length: FRAME_COUNT }, (_, index) => index)
+          .sort((a, b) => Math.abs(a - frame) - Math.abs(b - frame));
+        loadInBatches(byDistance, 8, activeStore);
+      }
+
+      window.addEventListener("resize", () => {
+        resizeCanvas();
+        updateSequenceMetrics();
+        if (reducedMotion) drawFrame(0);
+      }, { passive: true });
+      mobileMedia.addEventListener("change", swapFrameSet);
+      document.addEventListener("visibilitychange", () => {
+        pageVisible = !document.hidden;
+        if (!pageVisible) return;
+        // O browser pode descartar o conteúdo do canvas com o separador escondido.
+        lastDrawn = -1;
+        if (reducedMotion) {
+          drawFrame(0);
+        } else {
+          cancelAnimationFrame(rafId);
+          tick();
+        }
+      });
+
+      // Se algo falhar a arrancar, abre-se a página na mesma em vez de ficar presa no loader.
+      init().catch(dismissLoader);
+    })();
+  </script>
+</body>
+</html>

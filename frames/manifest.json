@@ -1,0 +1,30 @@
+{
+  "source": {
+    "filename": "Guests_arriving_at_luxury_lodge_20260911133014.mp4",
+    "duration": 8,
+    "resolution": "1280x720"
+  },
+  "frames": {
+    "target_count": 120,
+    "format": "webp",
+    "naming_pattern": "frame-{NNNN}.webp",
+    "sampling": "centre of each 1/120 slice",
+    "encoder": "Chromium canvas.toBlob"
+  },
+  "desktop": {
+    "resolution": "1280x720",
+    "quality": 68,
+    "actual_count": 120,
+    "total_mb": 7.86
+  },
+  "mobile": {
+    "quality": 62,
+    "count": 120,
+    "resolution": "960x540",
+    "total_bytes": 4716314,
+    "total_mb": 4.5,
+    "avg_frame_kb": 38
+  },
+  "recommended_scroll_height": "600vh",
+  "created": "2026-09-11T13:55:08.860Z"
+}
