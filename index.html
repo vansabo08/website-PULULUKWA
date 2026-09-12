@@ -882,6 +882,8 @@
       const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
       const MOBILE_IMAGE_BOX = 0.64;
       const CRITICAL_WAIT_MS = 2500;
+      const LOAD_TIMEOUT_MS = 9000;
+      const MAX_PARALLEL = 4;
 
       const sequence = document.getElementById("topo");
       const stage = document.getElementById("stage");
@@ -966,6 +968,7 @@
           directory,
           images: new Array(FRAME_COUNT),
           loaded: new Uint8Array(FRAME_COUNT),
+          failed: new Uint8Array(FRAME_COUNT),
           promises: new Array(FRAME_COUNT)
         };
       }
@@ -989,19 +992,42 @@
             const image = new Image();
             store.images[index] = image;
             image.decoding = "async";
+            let settled = false;
+
+            // Numa rede móvel um pedido pode ficar pendurado sem erro nem resposta.
+            // Sem este tempo limite, esse pedido travava o resto do filme.
+            const timer = window.setTimeout(() => {
+              if (settled) return;
+              image.src = "";
+              give_up_or_retry();
+            }, LOAD_TIMEOUT_MS);
+
+            function finish(value) {
+              if (settled) return;
+              settled = true;
+              window.clearTimeout(timer);
+              resolve(value);
+            }
+
+            function give_up_or_retry() {
+              if (settled) return;
+              window.clearTimeout(timer);
+              if (remaining > 0) {
+                window.setTimeout(() => attempt(remaining - 1), 200);
+                return;
+              }
+              settled = true;
+              store.images[index] = null;
+              store.promises[index] = null;
+              store.failed[index] = 1;
+              resolve(null);
+            }
+
             image.onload = () => {
               store.loaded[index] = 1;
-              resolve(image);
+              finish(image);
             };
-            image.onerror = () => {
-              if (remaining > 0) {
-                window.setTimeout(() => attempt(remaining - 1), 140);
-              } else {
-                store.images[index] = null;
-                store.promises[index] = null;
-                resolve(null);
-              }
-            };
+            image.onerror = give_up_or_retry;
             image.src = frameUrl(index, store);
           };
           attempt(retries);
@@ -1009,11 +1035,43 @@
         return store.promises[index];
       }
 
-      async function loadInBatches(indices, size = 8, store = activeStore) {
-        for (let start = 0; start < indices.length; start += size) {
-          const batch = indices.slice(start, start + size);
-          await Promise.all(batch.map((index) => loadFrame(index, store)));
+      // Fila de carregamento: o frame onde o visitante está passa à frente, e o resto do
+      // filme vai enchendo do grosso para o fino. Nunca mais de MAX_PARALLEL pedidos ao
+      // mesmo tempo, e um pedido preso não impede os seguintes.
+      let queue = [];
+      let inFlight = 0;
+
+      function startQueue(order) {
+        queue = order.slice();
+        pumpQueue();
+      }
+
+      function pumpQueue() {
+        while (inFlight < MAX_PARALLEL) {
+          const index = nextWanted();
+          if (index < 0) return;
+          inFlight += 1;
+          const store = activeStore;
+          loadFrame(index, store).then(() => {
+            inFlight -= 1;
+            pumpQueue();
+          });
         }
+      }
+
+      function wanted(index, store) {
+        return !store.loaded[index] && !store.promises[index] && !store.failed[index];
+      }
+
+      function nextWanted() {
+        const store = activeStore;
+        const target = Math.max(0, Math.min(FRAME_COUNT - 1, Math.round(currentFrame)));
+        if (wanted(target, store)) return target;
+        while (queue.length) {
+          const index = queue.shift();
+          if (wanted(index, store)) return index;
+        }
+        return -1;
       }
 
       function nearestLoaded(index, store = activeStore) {
@@ -1231,7 +1289,7 @@
         started = true;
         tick();
 
-        loadInBatches(refinementOrder(critical));
+        startQueue(refinementOrder(critical));
       }
 
       // Primeiro 1 frame em cada 16 ao longo do filme todo, depois 1 em 8, 1 em 4...
@@ -1258,13 +1316,9 @@
         updateSequenceMetrics();
 
         const frame = Math.max(0, Math.min(FRAME_COUNT - 1, Math.round(currentFrame)));
+        startQueue(refinementOrder([]));
         const image = await loadFrame(frame, activeStore);
-        if (!image) return;
-        drawFrame(frame);
-
-        const byDistance = Array.from({ length: FRAME_COUNT }, (_, index) => index)
-          .sort((a, b) => Math.abs(a - frame) - Math.abs(b - frame));
-        loadInBatches(byDistance, 8, activeStore);
+        if (image) drawFrame(frame);
       }
 
       // O filme arranca primeiro: assim, um browser antigo que não aceite algum dos
@@ -1294,6 +1348,20 @@
       window.addEventListener("scroll", restartIfStalled, { passive: true });
       window.addEventListener("touchstart", restartIfStalled, { passive: true });
       window.setInterval(restartIfStalled, 1000);
+
+      // Numa rede que vai e vem, os frames que falharam voltam a ser pedidos mais tarde.
+      window.setInterval(() => {
+        if (!pageVisible || !started) return;
+        const store = activeStore;
+        let anyFailed = false;
+        for (let index = 0; index < FRAME_COUNT; index += 1) {
+          if (store.failed[index]) {
+            store.failed[index] = 0;
+            anyFailed = true;
+          }
+        }
+        if (anyFailed) startQueue(refinementOrder([]));
+      }, 6000);
     })();
   </script>
 </body>
