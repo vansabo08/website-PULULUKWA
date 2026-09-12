@@ -18,13 +18,15 @@
     "total_mb": 7.86
   },
   "mobile": {
-    "quality": 62,
-    "count": 120,
-    "resolution": "960x540",
-    "total_bytes": 4716314,
-    "total_mb": 4.5,
-    "avg_frame_kb": 38
+    "resolution": "520x720",
+    "crop": "vertical, centrado no edificio (focusX 0.47)",
+    "quality": 55,
+    "actual_count": 120,
+    "total_mb": 2.53,
+    "avg_frame_kb": 22,
+    "note": "recorte proprio para telemovel: no telefone ve-se so a faixa central, por isso os 960x540 antigos gastavam 46 KB por frame para mostrar 40% da imagem"
   },
   "recommended_scroll_height": "600vh",
-  "created": "2026-09-11T13:55:08.860Z"
+  "created": "2026-09-11T13:55:08.860Z",
+  "mobile_loading": "no telemovel carregam-se so os frames pares (cerca de 1,4 MB); cada frame em falta usa o vizinho mais proximo"
 }
