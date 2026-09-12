@@ -882,8 +882,9 @@
       const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
       const MOBILE_IMAGE_BOX = 0.64;
       const CRITICAL_WAIT_MS = 2500;
-      const LOAD_TIMEOUT_MS = 9000;
-      const MAX_PARALLEL = 4;
+      // Tempo limite largo: serve só para destravar um pedido pendurado, nunca para
+      // desistir de uma imagem que está a chegar devagar.
+      const LOAD_TIMEOUT_MS = 30000;
 
       const sequence = document.getElementById("topo");
       const stage = document.getElementById("stage");
@@ -951,7 +952,7 @@
               "DIAGNOSTICO PULULUKWA",
               `ecra ${innerWidth}x${innerHeight} dpr ${(window.devicePixelRatio || 1).toFixed(1)}`,
               `animacoes reduzidas: ${reducedMotion ? "SIM" : "nao"}`,
-              `conjunto: ${useMobileFrames ? "telemovel" : "desktop"}  frames ${loaded}/${FRAME_COUNT}  falhas ${failed}`,
+              `conjunto: ${useMobileFrames ? "telemovel" : "desktop"}  frames ${loaded}/${FRAME_COUNT}  falhas ${failed}  em paralelo ${maxParallel}`,
               `scroll ${Math.round(window.scrollY)} de ${Math.round(sequenceDistance)}  (${Math.round(raw * 100)}%)`,
               `filme: frame ${Math.round(currentFrame) + 1}  desenhado ${lastDrawn + 1}`,
               `capitulo ${activeChapter + 1}  ritmo ${rate}/s`,
@@ -992,6 +993,7 @@
             const image = new Image();
             store.images[index] = image;
             image.decoding = "async";
+            const startedAt = Date.now();
             let settled = false;
 
             // Numa rede móvel um pedido pode ficar pendurado sem erro nem resposta.
@@ -1025,6 +1027,7 @@
 
             image.onload = () => {
               store.loaded[index] = 1;
+              noteLoadTime(Date.now() - startedAt);
               finish(image);
             };
             image.onerror = give_up_or_retry;
@@ -1041,13 +1044,28 @@
       let queue = [];
       let inFlight = 0;
 
+      // Quantos pedidos ao mesmo tempo. Numa rede lenta, vários pedidos dividem a banda
+      // e nenhuma imagem acaba de chegar: mais vale uma de cada vez, pela ordem certa.
+      let maxParallel = (() => {
+        const link = navigator.connection;
+        if (!link) return 3;
+        if (link.saveData || /2g/.test(link.effectiveType || "")) return 1;
+        return link.effectiveType === "3g" ? 2 : 4;
+      })();
+
+      function noteLoadTime(milliseconds) {
+        if (milliseconds > 3000) maxParallel = 1;
+        else if (milliseconds > 1500) maxParallel = Math.min(maxParallel, 2);
+        else if (milliseconds < 700 && maxParallel < 4) maxParallel += 1;
+      }
+
       function startQueue(order) {
         queue = order.slice();
         pumpQueue();
       }
 
       function pumpQueue() {
-        while (inFlight < MAX_PARALLEL) {
+        while (inFlight < maxParallel) {
           const index = nextWanted();
           if (index < 0) return;
           inFlight += 1;
