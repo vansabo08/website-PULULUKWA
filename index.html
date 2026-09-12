@@ -1107,7 +1107,10 @@
       }
 
       function pumpQueue() {
-        while (inFlight < maxParallel) {
+        // Depois do filme, a banda é das fotos das secções de baixo: o filme fica a um
+        // pedido de cada vez para não as deixar à espera.
+        const limit = window.scrollY > sequenceTop + sequenceDistance ? 1 : maxParallel;
+        while (inFlight < limit) {
           const index = nextWanted();
           if (index < 0) return;
           inFlight += 1;
