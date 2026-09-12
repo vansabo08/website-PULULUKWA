@@ -1072,9 +1072,18 @@
           const store = activeStore;
           loadFrame(index, store).then(() => {
             inFlight -= 1;
+            if (!started) reportLoaderProgress();
             pumpQueue();
           });
         }
+      }
+
+      function reportLoaderProgress() {
+        let loaded = 0;
+        for (let index = 0; index < FRAME_COUNT; index += 1) {
+          if (activeStore.loaded[index]) loaded += 1;
+        }
+        setLoaderProgress(Math.min(0.95, 0.3 + loaded * 0.08));
       }
 
       function wanted(index, store) {
@@ -1292,23 +1301,17 @@
           return;
         }
 
-        // Com rede lenta não se fica preso no loader: o primeiro frame chega para abrir,
-        // e os outros frames-chave continuam a carregar por trás.
-        const criticalTail = critical.filter((index) => index !== 0);
-        let prepared = 0;
-        const criticalReady = Promise.all(criticalTail.map(async (index) => {
-          const image = await loadFrame(index);
-          prepared += 1;
-          setLoaderProgress(0.3 + 0.66 * (prepared / criticalTail.length));
-          return image;
-        }));
-        await Promise.race([criticalReady, new Promise((resolve) => window.setTimeout(resolve, CRITICAL_WAIT_MS))]);
+        // Os frames-chave seguem pela mesma fila do resto. Pedi-los todos ao mesmo tempo,
+        // por fora dela, entupia a linha num telefone lento: eram sete pedidos a dividir
+        // a banda e nenhum chegava ao fim.
+        startQueue(critical.filter((index) => index !== 0).concat(refinementOrder(critical)));
+
+        // Um instante para chegarem alguns frames numa ligação rápida, nunca mais que isso.
+        await new Promise((resolve) => window.setTimeout(resolve, CRITICAL_WAIT_MS));
 
         dismissLoader();
         started = true;
         tick();
-
-        startQueue(refinementOrder(critical));
       }
 
       // Primeiro 1 frame em cada 16 ao longo do filme todo, depois 1 em 8, 1 em 4...
