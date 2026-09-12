@@ -17,8 +17,9 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- A folha da fonte carrega sem bloquear: com rede lenta a página abre logo e a Open Sans entra quando chegar -->
-  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <!-- A Open Sans (47 KB) custa o mesmo que uma imagem do filme. Num telefone lento o
+       filme vem primeiro: o script pede a fonte depois das primeiras imagens chegarem.
+       Até lá, o texto aparece na fonte do sistema. -->
   <noscript><link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
   <style>
     :root {
@@ -68,6 +69,10 @@
     p, h1, h2, h3, ul, ol, figure { margin: 0; padding: 0; }
     ul, ol { list-style: none; }
     img { display: block; max-width: 100%; }
+
+    /* As fotos das secções de baixo só recebem o endereço quando o visitante se aproxima:
+       durante o filme, nenhuma delas rouba banda ao filme. */
+    img[data-src] { background: #0d0d0d; }
 
     /* ---------- Loader ---------- */
 
@@ -822,19 +827,19 @@
 
         <div class="picks__grid">
           <figure class="pick">
-            <img src="img/sugestao-deck.webp" width="540" height="729" loading="lazy" fetchpriority="low" alt="Deck de madeira com mesas, virado para os lagos e passadiços, ao fim da tarde">
+            <img data-src="img/sugestao-deck.webp" width="540" height="729" alt="Deck de madeira com mesas, virado para os lagos e passadiços, ao fim da tarde">
             <figcaption><span class="pick__place">1.º lugar</span><span class="pick__name">Deck sobre os lagos</span></figcaption>
           </figure>
           <figure class="pick">
-            <img src="img/sugestao-passadicos.webp" width="540" height="729" loading="lazy" fetchpriority="low" alt="Passadiço de madeira que leva a um edifício com telhado de colmo">
+            <img data-src="img/sugestao-passadicos.webp" width="540" height="729" alt="Passadiço de madeira que leva a um edifício com telhado de colmo">
             <figcaption><span class="pick__place">2.º lugar</span><span class="pick__name">Passadiços de madeira</span></figcaption>
           </figure>
           <figure class="pick">
-            <img src="img/sugestao-quarto.webp" width="389" height="525" loading="lazy" fetchpriority="low" alt="Cama de madeira com dossel de rede mosquiteira num bungalow">
+            <img data-src="img/sugestao-quarto.webp" width="389" height="525" alt="Cama de madeira com dossel de rede mosquiteira num bungalow">
             <figcaption><span class="pick__place">3.º lugar</span><span class="pick__name">Quarto do bungalow</span></figcaption>
           </figure>
           <figure class="pick">
-            <img src="img/sugestao-lodge-noite.webp" width="533" height="720" loading="lazy" fetchpriority="low" alt="Edifício de telhado de colmo iluminado debaixo de um céu estrelado">
+            <img data-src="img/sugestao-lodge-noite.webp" width="533" height="720" alt="Edifício de telhado de colmo iluminado debaixo de um céu estrelado">
             <figcaption><span class="pick__place">4.º lugar</span><span class="pick__name">O lodge à noite</span></figcaption>
           </figure>
         </div>
@@ -844,7 +849,7 @@
     </section>
 
     <section class="rest" id="reservas" aria-labelledby="rest-title">
-      <img class="rest__bg" src="img/descanso-fundo.webp" width="720" height="335" loading="lazy" fetchpriority="low" alt="">
+      <img class="rest__bg" data-src="img/descanso-fundo.webp" width="720" height="335" alt="">
       <div class="wrap">
         <h2 class="rest__title" id="rest-title">Viaje e<br>descanse<br>o corpo</h2>
 
@@ -854,12 +859,12 @@
 
         <div class="rest__thumbs">
           <a class="thumb thumb--film" href="#topo">
-            <img src="img/filme-chegada.webp" width="544" height="290" loading="lazy" fetchpriority="low" alt="">
+            <img data-src="img/filme-chegada.webp" width="544" height="290" alt="">
             <span class="play" aria-hidden="true"></span>
             <span class="sr-only">Ver outra vez o filme da chegada</span>
           </a>
           <figure class="thumb thumb--room">
-            <img src="img/quarto-aldeia.webp" width="515" height="275" loading="lazy" fetchpriority="low" alt="Quarto com cama de casal e almofadas vermelhas debaixo do telhado de colmo">
+            <img data-src="img/quarto-aldeia.webp" width="515" height="275" alt="Quarto com cama de casal e almofadas vermelhas debaixo do telhado de colmo">
           </figure>
         </div>
 
@@ -917,6 +922,41 @@
       let tickCount = 0;
       let lastError = "";
       let started = false;
+      let framesArrived = 0;
+
+      // A fonte do Google pesa como uma imagem do filme. Pede-se quando o filme já tem
+      // três imagens, ou ao fim de 12 segundos, para o filme nunca ficar atrás dela.
+      function loadFont() {
+        if (document.getElementById("fonte-open-sans")) return;
+        const link = document.createElement("link");
+        link.id = "fonte-open-sans";
+        link.rel = "stylesheet";
+        link.href = "https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap";
+        document.head.appendChild(link);
+      }
+
+      window.setTimeout(loadFont, 12000);
+
+      // Fotos das secções de baixo: recebem o endereço só quando estão a chegar ao ecrã.
+      function armLazyImages() {
+        const images = Array.from(document.querySelectorAll("img[data-src]"));
+        const reveal = (image) => {
+          image.src = image.dataset.src;
+          image.removeAttribute("data-src");
+        };
+        if (!("IntersectionObserver" in window)) {
+          images.forEach(reveal);
+          return;
+        }
+        const watcher = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            watcher.unobserve(entry.target);
+            reveal(entry.target);
+          }
+        }, { rootMargin: "300px 0px" });
+        images.forEach((image) => watcher.observe(image));
+      }
 
       // Painel de diagnóstico: só aparece com ?diag=1 no endereço, para ver num telefone
       // real o que está a acontecer (animações reduzidas, frames, scroll, erros).
@@ -1031,6 +1071,8 @@
             image.onload = () => {
               store.loaded[index] = 1;
               noteLoadTime(Date.now() - startedAt);
+              framesArrived += 1;
+              if (framesArrived === 3) loadFont();
               finish(image);
             };
             image.onerror = give_up_or_retry;
@@ -1369,6 +1411,8 @@
         cancelAnimationFrame(rafId);
         tick();
       });
+
+      armLazyImages();
 
       window.addEventListener("scroll", restartIfStalled, { passive: true });
       window.addEventListener("touchstart", restartIfStalled, { passive: true });
