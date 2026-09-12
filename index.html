@@ -717,6 +717,9 @@
       .rest__link { justify-content: flex-end; margin-top: calc(var(--w) * 18); font-size: calc(var(--w) * 13); }
     }
 
+    /* Com "reduzir animações" (ou poupança de bateria no telemóvel) o filme continua a
+       responder ao scroll, porque só se mexe com o dedo do visitante. Tiram-se apenas
+       os movimentos automáticos: transições do texto, do contador e do loader. */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: .01ms !important;
@@ -724,7 +727,6 @@
         transition-duration: .01ms !important;
         transition-delay: 0s !important;
       }
-      .sequence { height: 100vh; height: 100svh; }
     }
   </style>
 </head>
@@ -1108,11 +1110,12 @@
       }
 
       function tick() {
-        if (!pageVisible || reducedMotion) return;
+        if (!pageVisible) return;
         const raw = rawScrollProgress();
         const effective = remapProgress(raw);
         const targetFrame = Math.round(effective * (FRAME_COUNT - 1));
-        currentFrame += (targetFrame - currentFrame) * LERP_FACTOR;
+        // Sem inércia com "reduzir animações": o frame segue o scroll e pára quando o dedo pára.
+        currentFrame += (targetFrame - currentFrame) * (reducedMotion ? 1 : LERP_FACTOR);
         drawFrame(Math.round(currentFrame));
         setChapter(nearestChapter(effective));
         updateProgress(effective);
@@ -1125,17 +1128,6 @@
         updateSequenceMetrics();
         setChapter(0);
         setLoaderProgress(0.06);
-
-        if (reducedMotion) {
-          const poster = await loadFrame(0);
-          if (!poster) {
-            showLoadError();
-            return;
-          }
-          drawFrame(0);
-          dismissLoader();
-          return;
-        }
 
         const critical = Array.from(new Set([
           0,
@@ -1169,9 +1161,23 @@
         dismissLoader();
         tick();
 
-        const remaining = Array.from({ length: FRAME_COUNT }, (_, index) => index)
-          .filter((index) => !critical.includes(index));
-        loadInBatches(remaining);
+        loadInBatches(refinementOrder(critical));
+      }
+
+      // Primeiro 1 frame em cada 16 ao longo do filme todo, depois 1 em 8, 1 em 4...
+      // Com rede lenta o filme já anda de ponta a ponta cedo, e vai ganhando fluidez.
+      function refinementOrder(alreadyLoaded) {
+        const seen = new Set(alreadyLoaded);
+        const order = [];
+        for (let step = 16; step >= 1; step = Math.floor(step / 2)) {
+          for (let index = 0; index < FRAME_COUNT; index += step) {
+            if (!seen.has(index)) {
+              seen.add(index);
+              order.push(index);
+            }
+          }
+        }
+        return order;
       }
 
       async function swapFrameSet(event) {
@@ -1194,7 +1200,6 @@
       window.addEventListener("resize", () => {
         resizeCanvas();
         updateSequenceMetrics();
-        if (reducedMotion) drawFrame(0);
       }, { passive: true });
       mobileMedia.addEventListener("change", swapFrameSet);
       document.addEventListener("visibilitychange", () => {
@@ -1202,12 +1207,8 @@
         if (!pageVisible) return;
         // O browser pode descartar o conteúdo do canvas com o separador escondido.
         lastDrawn = -1;
-        if (reducedMotion) {
-          drawFrame(0);
-        } else {
-          cancelAnimationFrame(rafId);
-          tick();
-        }
+        cancelAnimationFrame(rafId);
+        tick();
       });
 
       // Se algo falhar a arrancar, abre-se a página na mesma em vez de ficar presa no loader.
