@@ -1047,17 +1047,16 @@
       let queue = [];
       let inFlight = 0;
 
-      // Quantos pedidos ao mesmo tempo. Medido numa ligação lenta de propósito: quatro
-      // imagens em paralelo chegaram em 1,7 s, uma sozinha demorou 2 s. Vários pedidos
-      // aproveitam melhor a linha; baixa-se só quando cada imagem demora um mundo.
-      let maxParallel = (() => {
-        const link = navigator.connection;
-        return link && (link.saveData || /2g/.test(link.effectiveType || "")) ? 2 : 4;
-      })();
+      // Começa por um pedido de cada vez e só acelera se a linha responder bem. Medido
+      // com rede travada: numa linha boa, quatro imagens ao mesmo tempo chegam em 1,7 s
+      // (uma sozinha demora 2 s), mas numa linha de 12 KB/s quatro pedidos dividem a
+      // banda, cada imagem precisa de 12 s e nenhuma chega. Assim, a imagem muda sempre.
+      let maxParallel = 1;
 
       function noteLoadTime(milliseconds) {
-        if (milliseconds > 12000) maxParallel = 2;
-        else if (milliseconds < 1200 && maxParallel < 6) maxParallel += 1;
+        if (milliseconds < 1500) maxParallel = Math.min(6, maxParallel + 1);
+        else if (milliseconds > 4000) maxParallel = 1;
+        else maxParallel = Math.min(maxParallel, 2);
       }
 
       function startQueue(order) {
