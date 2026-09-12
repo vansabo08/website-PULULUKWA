@@ -822,19 +822,19 @@
 
         <div class="picks__grid">
           <figure class="pick">
-            <img src="img/sugestao-deck.webp" width="540" height="729" loading="lazy" alt="Deck de madeira com mesas, virado para os lagos e passadiços, ao fim da tarde">
+            <img src="img/sugestao-deck.webp" width="540" height="729" loading="lazy" fetchpriority="low" alt="Deck de madeira com mesas, virado para os lagos e passadiços, ao fim da tarde">
             <figcaption><span class="pick__place">1.º lugar</span><span class="pick__name">Deck sobre os lagos</span></figcaption>
           </figure>
           <figure class="pick">
-            <img src="img/sugestao-passadicos.webp" width="540" height="729" loading="lazy" alt="Passadiço de madeira que leva a um edifício com telhado de colmo">
+            <img src="img/sugestao-passadicos.webp" width="540" height="729" loading="lazy" fetchpriority="low" alt="Passadiço de madeira que leva a um edifício com telhado de colmo">
             <figcaption><span class="pick__place">2.º lugar</span><span class="pick__name">Passadiços de madeira</span></figcaption>
           </figure>
           <figure class="pick">
-            <img src="img/sugestao-quarto.webp" width="389" height="525" loading="lazy" alt="Cama de madeira com dossel de rede mosquiteira num bungalow">
+            <img src="img/sugestao-quarto.webp" width="389" height="525" loading="lazy" fetchpriority="low" alt="Cama de madeira com dossel de rede mosquiteira num bungalow">
             <figcaption><span class="pick__place">3.º lugar</span><span class="pick__name">Quarto do bungalow</span></figcaption>
           </figure>
           <figure class="pick">
-            <img src="img/sugestao-lodge-noite.webp" width="533" height="720" loading="lazy" alt="Edifício de telhado de colmo iluminado debaixo de um céu estrelado">
+            <img src="img/sugestao-lodge-noite.webp" width="533" height="720" loading="lazy" fetchpriority="low" alt="Edifício de telhado de colmo iluminado debaixo de um céu estrelado">
             <figcaption><span class="pick__place">4.º lugar</span><span class="pick__name">O lodge à noite</span></figcaption>
           </figure>
         </div>
@@ -844,7 +844,7 @@
     </section>
 
     <section class="rest" id="reservas" aria-labelledby="rest-title">
-      <img class="rest__bg" src="img/descanso-fundo.webp" width="720" height="335" loading="lazy" alt="">
+      <img class="rest__bg" src="img/descanso-fundo.webp" width="720" height="335" loading="lazy" fetchpriority="low" alt="">
       <div class="wrap">
         <h2 class="rest__title" id="rest-title">Viaje e<br>descanse<br>o corpo</h2>
 
@@ -854,12 +854,12 @@
 
         <div class="rest__thumbs">
           <a class="thumb thumb--film" href="#topo">
-            <img src="img/filme-chegada.webp" width="544" height="290" loading="lazy" alt="">
+            <img src="img/filme-chegada.webp" width="544" height="290" loading="lazy" fetchpriority="low" alt="">
             <span class="play" aria-hidden="true"></span>
             <span class="sr-only">Ver outra vez o filme da chegada</span>
           </a>
           <figure class="thumb thumb--room">
-            <img src="img/quarto-aldeia.webp" width="515" height="275" loading="lazy" alt="Quarto com cama de casal e almofadas vermelhas debaixo do telhado de colmo">
+            <img src="img/quarto-aldeia.webp" width="515" height="275" loading="lazy" fetchpriority="low" alt="Quarto com cama de casal e almofadas vermelhas debaixo do telhado de colmo">
           </figure>
         </div>
 
@@ -993,6 +993,9 @@
             const image = new Image();
             store.images[index] = image;
             image.decoding = "async";
+            // O filme vem antes das fotos das secções de baixo, que são marcadas como
+            // baixa prioridade. Numa rede lenta é isto que decide quem recebe a banda.
+            image.fetchPriority = "high";
             const startedAt = Date.now();
             let settled = false;
 
@@ -1083,7 +1086,8 @@
 
       function nextWanted() {
         const store = activeStore;
-        const target = Math.max(0, Math.min(FRAME_COUNT - 1, Math.round(currentFrame)));
+        let target = Math.max(0, Math.min(FRAME_COUNT - 1, Math.round(currentFrame)));
+        if (useMobileFrames) target -= target % 2;
         if (wanted(target, store)) return target;
         while (queue.length) {
           const index = queue.shift();
@@ -1315,7 +1319,10 @@
       function refinementOrder(alreadyLoaded) {
         const seen = new Set(alreadyLoaded);
         const order = [];
-        for (let step = 16; step >= 1; step = Math.floor(step / 2)) {
+        // No telemóvel fica-se nos frames pares: metade dos dados, e o filme continua
+        // fluido porque cada frame em falta usa o vizinho mais próximo.
+        const finestStep = useMobileFrames ? 2 : 1;
+        for (let step = 16; step >= finestStep; step = Math.floor(step / 2)) {
           for (let index = 0; index < FRAME_COUNT; index += step) {
             if (!seen.has(index)) {
               seen.add(index);
