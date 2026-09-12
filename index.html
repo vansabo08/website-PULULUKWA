@@ -38,6 +38,9 @@
       font-family: var(--font);
       -webkit-font-smoothing: antialiased;
       scroll-behavior: auto;
+      /* No telemóvel, arrastar para baixo no topo recarregava a página e o filme
+         voltava ao início. Assim, o gesto fica só para o filme. */
+      overscroll-behavior-y: none;
     }
 
     body {
